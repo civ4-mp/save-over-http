@@ -1,0 +1,37 @@
+
+Der Client versucht neben dem Kontakt über den Host auch über NATNEG Infos zu erhalten.
+Insbesondere wird dadurch (Paket nicht im Rohtextlesbar) die eigene public-IP übermittelt.
+Evtl. wird aber sogar auch die public-IP des Gegenüber angefragt, denn so ein Paket habe ich ansonsten
+noch nicht gesehen.
+
+Nach der Abwicklung der Kommunikation zum Host versucht der Client über die Public-IP den zweiten Client
+zu erreichen?! 
+
+1. NATNEG-Server wird angegg
+
+192.168.0.32	91.66.52.155	UDP	62	3333 → 61040 Len=20
+  Das kommt vom ISP-NAT64
+35.752246	91.66.52.155	192.168.0.32	UDP	62	3333 → 2056 Len=20
+
+
+
+Edit: Ok, diese Kommunikation fällt weg, wenn man einen PB-Server als host verwendet.
+Dann liefert dieser anscheinend die notwendigen Infos :-)
+
+Frage ist dann bloß warum der MP-Host die Funktion dann nicht auch hätte erfüllen können :gruebel:
+Vermutlich ging man davon aus, dass der durch Firewall-Regeln nicht so gut von außen erreichbar 
+ist wie es bei einem PB-Server zu erwarten ist.
+
+
+NATNEG-Resultate auswerten (siehe NatNegMessage.cs)
+55928  Sending response CONNECT CLIENT 1103451269 CLIENTPUBLICIP 91.66.52.155 CLIENTPUBLICPORT 61044 GOTDATA 66 ERROR 0 to 91.66.52.155:54982
+55929  (Response bytes: FD FC 1E 66 6A B2 03 05 41 C5 54 85 5B 42 34 9B EE 74 42 00)
+                        Fixed String    ] |  |  |           | IPv4      |     |
+												                  Protocol          IPv4 (Int)  Port (Short)
+																					   |  |                             |    ]
+																						 Record Type CONNECT              Fixed End (GotData=42, Error=00)
+																						    |
+																								Client ID ]
+
+
+=> Die IP umbiegen auf lokale Addresse 127.6.6.1

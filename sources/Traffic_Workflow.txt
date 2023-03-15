@@ -1,0 +1,100 @@
+===== Ablaufschema für ein normales MP-Spiel mit Host, Client A und Client B. =====
+Ports:    Host: 2222
+      Client A: 3333
+      Client B: 2056
+
+Syntax: []-Markiert entscheidene Bytes
+        ( -Markiert Teil, der wechselnde/zu ignorierende Werte enthält
+        Es werden nicht alle Pakete, nur die entscheidenden aufgelistet.
+
+0. Host erstellt Spiel per DirectIP > Neues Spiel
+1. Client A verbindet sich. Hinterer Teil enthält Key, den nur ein Civ4 Host korrekt beantworten kann.
+  FE FE [01 00 00 00]  00 (3c…
+
+2. Host antwortet A.  Hinterer Teil bestätigt Client, dass er mit Civ4 Host redet.
+  FE FE [02 00 00 00] 00
+
+3. Client A sendet seine Private [IPv4:Port]-Kombination an Host
+  FE FE [03 00 01 00] 01 4A (76…
+
+4. Host sendet Info über seine IP raus an Client A.
+  FE FE [00 00 02 00][02 dc dc 05] (0f
+  …[Len0][PrivIP4_Host:Port][Len1][PublicIPv4_Client][2 unkown Bytes (Port)?!)]
+
+  Hier ist, im Unterschied zum PB der zweite String, welcher die
+  Public-IP enthält, Null. (Ah, Unterschied ist nicht zwischen PB und MP
+  sondern ob der Server im Lan liegt oder nicht!)
+  Hier könnte ich schon meine IPv4 für den IPv6-Modus einschummeln.
+  Dann wird der NATNEG ggf. gar nicht erst angesprochen?!
+
+  D.h. hier könnte man eine eigene PublicIPv4 des Clients festlegen,
+  die dann für Verbindungen im IPv6-Modus verwendet wird.
+  Außerdem muss man es genau hier festlegen, um NATNEG-Server-Anfragen
+  aus dem Wege zu gehen.
+  Frage ist, ob man den Wert generell überschreibt bei -6 oder
+  nur wenn das Feld leer ist...
+ 
+
+
+  INFO: Bei Zulans PBs kriege ich im ersten String eine '172.17.0.3:2091' rein,
+  was im Range einer privaten Addresse liegt. Das liegt daran,
+  dass die zum virtuellen Netzwerk des Docker-Container gehört.
+
+  Hier könnte ich noch die globale IPv6 des Servers anhängen,
+  wenn ich den Server auch IPv6-only supporten will.
+
+
+5.-8. Client B verbindet sich und tauscht die gleichen Infos mit Host aus.
+9. Host sendet Client B auch infos über ersten verbundenen Client A. 
+  FE FE  [00 00 03 00][02 dc dc 06] (1c…
+  
+   Paket enthält [PublicIPv4:Port], [PrivIPv4:Port] und Nickname falls beide
+   bekannt sind, und auch den Nickname?!
+   Ist PublicIPv4 nicht bekannt, ist String der Länge Null enthalten.
+   Nickname-String kann auch Null sein.
+
+
+10 Host sendet Client A Infos über Client B  
+  FE FE  3D 00  07[dc dc 10]
+  FE FE  32 00  05[dc dc 10]
+  0020   fe fe 00 00 3d 00 07 dc dc 10 27 50 bb 2c 00 00   ....=.....'P.,..
+  0030   00 00 11 00 00 00 31 39 32 2e 31 36 38 2e 30 2e   ......192.168.0.
+  0040   33 32 3a 32 30 35 36 2e 00 00 00 5b 32 61 30 32   32:2056....[2a02
+  0050   3a 38 31 30 39 3a 38 39 63 30 3a 33 61 34 39 3a   :8109:89c0:3a49:
+  0060   64 35 39 39 3a 66 34 35 33 3a 39 66 31 62 3a 36   d599:f453:9f1b:6
+  0070   32 32 39 5d 3a 32 30 35 36                        229]:2056
+
+  0020                                 fe fe 00 00 32 00   . .+...A+.....2.
+  0030   05 dc dc 10 d1 64 38 2d 12 00 00 00 39 31 2e 36   .....d8-....91.6
+  0040   36 2e 35 32 2e 31 35 35 3a 36 31 30 34 32 11 00   6.52.155:61042..
+  0050   00 00 31 39 32 2e 31 36 38 2e 30 2e 33 32 3a 32   ..192.168.0.32:2
+  0060   30 35 36                                          056
+
+======== Abzweigung bei unbekannter Public-IPv4 von Client A.
+        Verbindung mit NATNEG-Server aufnehmen. Ein Antwortpaket-Typ enthält die Public-IPv4.
+          Der Client versucht auf mehreren (4) Wegen den NATNEG-Server zu erreichen. Daher
+          kommen auch mehrere Meldungen mit der Antwort zurück.
+
+          Erkennung:
+                    FD FC 1E 66 6a b2 (Header)
+                    03 (ProtocolVersion);
+                    05 (RecordType=CONNECT);
+
+          Danach    (uint) ClientID
+                    (uint) IPv4
+                    (ushort) Port.
+
+          Ende      42 00 (GotData und Error Flag; konstant)
+
+== 10. Client A  fragt bei NATNEG an. (RecordType 00)
+== 11. Client B  fragt bei NATNEG an. (RecordType 00)
+== 12./13. NATNEG antwortet beiden (RecordType 01), wobei dass
+    noch nicht die IPs enthält
+
+
+
+===== Ablaufschema für ein Pitboss-Spiel mit Host, Client A und Client B. =====
+  PB-Server ist nicht lokal, d.h. wird über Public-IP erreicht.
+
+4'. Hier enthält das Paket auch die Public-IP des Clients.
+  FE FE 00 00 02 00 02 dc dc 05 0f
