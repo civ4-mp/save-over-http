@@ -1,16 +1,21 @@
-﻿=== Target ===
+=== Target ===
+ 
 This repository builds 'BTS_Wrapper.exe' and it's dll-files, which improving the Civ4 multiplayer capabilities.
 The main reason for using this tool is the speedup during entering a Civ4 Pitboss multiplayer game.
 
 The tool was extended over the years and supports now multiple features.
 
+
 === Calling Arguments ===
+
 `
   BTS_Wrapper.exe [Civ4:BTS binary name] [-6|--ip6] [[-l|--log] {Logfile} ] [[-P|--share-saves] {Port}] {Normal Civ4 arguments}
 `
 Logfile will be created in `Civ4:BTS\Logs` (if writeable) or `%TMP%`.
 
+
 === Features ===
+
 * Speed up loading of Saves from Civ4 Pitboss servern.
   Normally, the network code of Civ4:BTS limits the bandwidth to ancient 10kB/sec, 
   but advanced saves consume a few MB. This leads to long timeouts during the login… 
@@ -29,6 +34,7 @@ Logfile will be created in `Civ4:BTS\Logs` (if writeable) or `%TMP%`.
 
 
 === How to use it ===
+
 It requires changes on both (client & host/pb server) sides.
 
 1) As Player (non hosting):  
@@ -70,6 +76,7 @@ It requires changes on both (client & host/pb server) sides.
 
 
 === Sources ===
+
 The sources and project files for Visual Studio 2017 can be found in ./sources.
 Used following libraries:
 * MinHook, https://github.com/TsudaKageyu/minhook/
