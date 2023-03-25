@@ -1,0 +1,4 @@
+
+BTS_Wrapper is using libcurl.dll (32 bit) to download the save.
+You require the 'lib32-gnutls' package on the host system.
+Otherwise curl can not download https:// sources.

@@ -78,14 +78,14 @@ static int32_t Webserver_Run = 0;
  * If the timing goes bad, other DLL's already called WSACleanup() often enought to set
  * the ref-count to zero and the libmicrohttpd functions failing and stuck in an infinite loop.
  *
-  #  Time of Day  Thread  Module  API  Return Value  Error  Duration
-  37479  10:50:32.288 PM  1  _socket.pyd  WSACleanup (  )  0    0.0002189
-  37480  10:50:32.288 PM  4  libmicrohttpd-dll.dll  recv ( 620, 0x03909eb4, 4, 0 )  SOCKET_ERROR  10093
-  37481  10:50:32.288 PM  4  libmicrohttpd-dll.dll  select ( 0, 0x03909ef0, 0x0390df00, 0x0390bef8, NULL )  SOCKET_ERROR  10093 
-  37482  10:50:32.288 PM  4  libmicrohttpd-dll.dll  WSAGetLastError (  )  WSANOTINITIALISED    0.0000002
-  37483  10:50:32.288 PM  4  libmicrohttpd-dll.dll  select ( 0, 0x03909ef0, 0x0390df00, 0x0390bef8, NULL )  SOCKET_ERROR  10093
-  37484  10:50:32.288 PM  4  libmicrohttpd-dll.dll  WSAGetLastError (  )  WSANOTINITIALISED    0.0000001
-  ...
+#  Time of Day  Thread  Module  API  Return Value  Error  Duration
+37479  10:50:32.288 PM  1  _socket.pyd  WSACleanup (  )  0    0.0002189
+37480  10:50:32.288 PM  4  libmicrohttpd-dll.dll  recv ( 620, 0x03909eb4, 4, 0 )  SOCKET_ERROR  10093
+37481  10:50:32.288 PM  4  libmicrohttpd-dll.dll  select ( 0, 0x03909ef0, 0x0390df00, 0x0390bef8, NULL )  SOCKET_ERROR  10093 
+37482  10:50:32.288 PM  4  libmicrohttpd-dll.dll  WSAGetLastError (  )  WSANOTINITIALISED    0.0000002
+37483  10:50:32.288 PM  4  libmicrohttpd-dll.dll  select ( 0, 0x03909ef0, 0x0390df00, 0x0390bef8, NULL )  SOCKET_ERROR  10093
+37484  10:50:32.288 PM  4  libmicrohttpd-dll.dll  WSAGetLastError (  )  WSANOTINITIALISED    0.0000001
+...
  * Calling WSAStartup myself to increase ref-count did not helpeded, but updating libmicrohttp-dll.dll seems
  * to help?! 
  */
@@ -124,7 +124,9 @@ static MH_STATUS status;
 
 #ifdef WITH_LOGFILE
 bool logactive = false;
-std::string logname = std::string("BTS_Wrapper.log");
+std::string default_logname = std::string("BTS_Wrapper.log");
+std::string default_logpath(".\\Logs\\");  // Search order: .\Logs\, .\, %TMP%
+std::string logpath;
 std::ofstream logfile;
 #endif
 
@@ -197,22 +199,21 @@ int gen_temp_file_path(std::string &path) {
 
 #ifdef WITH_LOGFILE
 
-int gen_logfile_path(std::string &path) {
+int gen_logfile_path(const std::string &log_name, std::string &path) {
 
   // Guarantee length of internal buffer
   if( tmp_path.length() < MAX_TMP_NAME_LEN){
     tmp_path.resize(MAX_TMP_NAME_LEN, ' ');
   }
 
-  std::string fname = std::string("BTS_Wrapper.log");
   uint32_t tmp_len = GetTempPathA(MAX_TMP_NAME_LEN, (char *)tmp_path.c_str());
-  if (tmp_len + fname.length() > MAX_TMP_NAME_LEN) {
+  if (tmp_len + log_name.length() > MAX_TMP_NAME_LEN) {
     return -1;
   }
   tmp_path.resize(tmp_len); // otherwise many ' ' follow the \0 inserted by GetTempPathA
   path.clear();
   path.append(tmp_path);
-  path.append(fname);
+  //path.append(log_name);
   return 0;
 }
 #endif
@@ -261,7 +262,7 @@ int start_socat6to4(const std::string &bind_ip6, const std::string &port, const 
   std::stringstream argstream;
   argstream << "\"BTS_Wrapper_Libs\\socat.exe\"";
   if (logactive){
-    argstream << " -x -lf Logs\\socat." << port << ".log";
+    argstream << " -x -lf " << logpath << "socat." << port << ".log";
   }
   argstream << " UDP6-LISTEN:" << std::dec << port
     << ",fork,reuseaddr"
@@ -583,7 +584,10 @@ int WINAPI MySendto(
     //                                   buf+39
     const uint32_t idx_ip = 39;
     if ( *(buf+assumed_return_value) != '\0' ){
-      LOGPRINT("(BTS_Wrapper) Hey, string in selected package is not null terminated.");
+      LOGPRINT("(BTS_Wrapper) Hey, string in selected package is not null terminated."
+          << "\n\tassumed_return_value: " << assumed_return_value << " , value: '"
+          << *(buf+assumed_return_value) << "'"
+          );
     }else{
       std::string own_client_ip_port(buf + idx_ip, assumed_return_value-idx_ip-1);
       size_t pos_colon = own_client_ip_port.find(":", 0);
@@ -802,11 +806,11 @@ int WINAPI MyRecvfrom(
     // Check if we leaved the game
     if (recv_from_length == 3 &&
         buf[2] == 0x68 && buf[0] == 0xFE && buf[1] == 0xFE
-        ){
+       ){
       end_socats();
     }
 #endif
- 
+
 
 
     return recv_from_length;
@@ -1464,32 +1468,57 @@ extern "C" {
 #ifdef WITH_LOGFILE
       if (0 == std::string("-l").compare(*it)
           || 0 == std::string("--log").compare(*it)
-         ) {
+         )
+      {
         it++;
+
+        logactive = false;
+        std::string logname(default_logname);
+        logpath = default_logpath; // to store socat log files at same place
+
         if( it < itEnd ){
-          logname = std::string(*it);
-          logactive = false;
-
-          // Prepend "Logs\\" if name doesn't begins with . or /
-          if (logname[0] != '\\' && logname[0] != '.') {
-            logname.insert(0, "Logs\\");
+          if ((*it)[0] != '-') {
+            logname = std::string(*it);
+            it++;
           }
+        }
 
-          // Try creation of logfile in current dir
-          logfile.open(logname);
+        std::string logpath_and_name(logpath);
+        logpath_and_name.append(logname);
+
+        // Try creation of logfile in ".\\Logs\\" if input argument is just a filename, no path
+        if (logname[0] != '\\' && logname[0] != '.') {
+          logfile.open(logpath_and_name);
           if (logfile.is_open()) {
             logactive = true;
-          } else {
-            // Create file in %TMP% folder
-            if (0 == gen_logfile_path(logname)) {
-              logfile.open(logname);
-              if (logfile.is_open()) {
-                logactive = true;
-                LOGPRINT("Log path: " << logname);
-              }
+            std::cout << "Log path: " << logpath_and_name << std::endl;
+            LOGPRINT("Log path: " << logpath_and_name);
+          }
+        }
+
+        // Try creation of logfile in current dir
+        if (logactive == false) {
+          logpath = ".\\";
+          logpath_and_name = logpath; logpath_and_name.append(logname);
+          logfile.open(logpath_and_name);
+          if (logfile.is_open()) {
+            logactive = true;
+            std::cout << "Log path: " << logpath_and_name << std::endl;
+            LOGPRINT("Log path: " << logpath_and_name);
+          }
+        }
+
+        // Create file in %TMP% folder
+        if (logactive == false) {
+          if (0 == gen_logfile_path(logname, logpath)) {
+            logpath_and_name = logpath; logpath_and_name.append(logname);
+            logfile.open(logpath_and_name);
+            if (logfile.is_open()) {
+              logactive = true;
+              std::cout << "Log path: " << logpath << std::endl;
+              LOGPRINT("Log path: " << logpath);
             }
           }
-          it++;
         }
         continue;
       }
@@ -1510,15 +1539,15 @@ extern "C" {
       if(0 == std::string("-P").compare(*it)
           || 0 == std::string("--share-saves").compare(*it)
         ) {
-      it++;
-      if( it < itEnd ){
-        Webserver_Port = atoi((*it).c_str());
-        use_webserver = true;
-        LOGPRINT("Enable Webserver");
         it++;
+        if( it < itEnd ){
+          Webserver_Port = atoi((*it).c_str());
+          use_webserver = true;
+          LOGPRINT("Enable Webserver");
+          it++;
+        }
+        continue;
       }
-      continue;
-    }
 #endif
 
       it++;
