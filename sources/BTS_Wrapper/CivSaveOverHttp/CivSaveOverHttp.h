@@ -16,6 +16,7 @@
 
 #include <string>
 #include <fstream>
+#include <iostream>
 #include "config.h"
 
 #ifdef WITH_LOGFILE
@@ -26,10 +27,14 @@ extern std::ofstream logfile;
                 if( logactive ){ \
                     logfile << X << std::endl; \
                     logfile.flush(); \
+                }else{ \
+                    std::cout << X << std::endl; \
                 }
 #define LOGPRINT0(X) \
                 if( logactive ){ \
                     logfile << X; \
+                }else{ \
+                    std::cout << X << std::endl; \
                 }
 #else
 #define LOGPRINT(X) 

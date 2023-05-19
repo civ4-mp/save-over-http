@@ -204,7 +204,7 @@ int main(const int argc, const char * const argv[])
   //char * dllName = "CivSaveOverHttp.dll";
   if( !update_path_env()) {
     std::cout << "Update of PATH variable failed!" << args << std::endl;
-    return 0;
+    goto endMainError;
   }
 
   void* pLoadLibrary = (void*)GetProcAddress(GetModuleHandleA("kernel32"), "LoadLibraryA");
@@ -220,7 +220,7 @@ int main(const int argc, const char * const argv[])
      )
   {
     std::cout << "Could not run BTS exe. GetLastError() = " << GetLastError() << std::endl;
-    return 0;
+    goto endMainError;
   }
 
   std::cout << "Allocating virtual memory" << std::endl;
@@ -229,7 +229,7 @@ int main(const int argc, const char * const argv[])
   if (!pReservedSpace)
   {
     std::cout << "Could not allocate virtual memory. GetLastError() = " << GetLastError() << std::endl;
-    return 0;
+    goto endMainError;
   }
 
   std::cout << "Writing process memory" << std::endl;
@@ -237,7 +237,7 @@ int main(const int argc, const char * const argv[])
     //if (!WriteProcessMemory(processInformation.hProcess, pReservedSpace, dllName, strlen(dllName), NULL))
   {
     std::cout << "Error while calling WriteProcessMemory(). GetLastError() = " << GetLastError() << std::endl;
-    return 0;
+    goto endMainError;
   }
 
   std::cout << "Creating remote thread" << std::endl;
@@ -246,7 +246,7 @@ int main(const int argc, const char * const argv[])
   if (!hThread)
   {
     std::cout << "Unable to create the remote thread. GetLastError() = " << GetLastError() << std::endl;
-    return 0;
+    goto endMainError;
   }
 
   std::cout << "Thread created" << std::endl;
@@ -262,11 +262,17 @@ int main(const int argc, const char * const argv[])
   DWORD exitCode;
   if( !GetExitCodeThread(hThread, &exitCode) ){
     std::cout << "Unable to get exit code of remote thread. GetLastError() = " << GetLastError() << std::endl;
-    return 0;
+    goto endMainError;
   }
   HMODULE dllHandleRemote = (HMODULE) exitCode;
 
   std::cout << "dllHandleRemote: " << std::hex << dllHandleRemote << std::endl;
+
+	if (exitCode == 0){
+		std::cout << "LoadLibrary failed for '" << dllName << "'." << std::endl
+			<< "Probably a dependent DLL is missing." << std::endl;
+    goto endMainError;
+	}
 
 
   // ===== Setup of CivSaveOverHttp ===
@@ -283,7 +289,7 @@ int main(const int argc, const char * const argv[])
     if (!pReservedSpace_Log)
     {
       std::cout << "Could not allocate virtual memory. (3) GetLastError() = " << GetLastError() << std::endl;
-      return 0;
+			goto endMainError;
     }
 
     //std::cout << "Writing process memory (3)" << std::endl;
@@ -291,7 +297,7 @@ int main(const int argc, const char * const argv[])
           otherArgs.c_str(), strlen(otherArgs.c_str()), NULL))
     {
       std::cout << "Error while calling WriteProcessMemory(). GetLastError() = " << GetLastError() << std::endl;
-      return 0;
+			goto endMainError;
     }
 
     //0.2 Call SetOtherArgs(pArgs)
@@ -301,7 +307,7 @@ int main(const int argc, const char * const argv[])
     if (!hThread3)
     {
       std::cout << "Unable to create the remote thread. GetLastError() = " << GetLastError() << std::endl;
-      return 0;
+			goto endMainError;
     }
 
     //std::cout << "Thread created (3)" << std::endl;
@@ -327,7 +333,7 @@ int main(const int argc, const char * const argv[])
       if (!pReservedSpace_Log)
       {
         std::cout << "Could not allocate virtual memory. (5) GetLastError() = " << GetLastError() << std::endl;
-        return 0;
+				goto endMainError;
       }
 
       //std::cout << "Writing process memory (2)" << std::endl;
@@ -335,7 +341,7 @@ int main(const int argc, const char * const argv[])
             sLogfile.c_str(), strlen(sLogfile.c_str()), NULL))
       {
         std::cout << "Error while calling WriteProcessMemory(). GetLastError() = " << GetLastError() << std::endl;
-        return 0;
+				goto endMainError;
       }
 
       //2.1 Transfer the port argument into other address space
@@ -345,7 +351,7 @@ int main(const int argc, const char * const argv[])
       if (!pReservedSpace_Port)
       {
         std::cout << "Could not allocate virtual memory. (6) GetLastError() = " << GetLastError() << std::endl;
-        return 0;
+				goto endMainError;
       }
 
       //std::cout << "Writing process memory (2)" << std::endl;
@@ -353,7 +359,7 @@ int main(const int argc, const char * const argv[])
             sWebserver_Port.c_str(), strlen(sWebserver_Port.c_str()), NULL))
       {
         std::cout << "Error while calling WriteProcessMemory(). GetLastError() = " << GetLastError() << std::endl;
-        return 0;
+				goto endMainError;
       }
 
       //2.2 Call startServer(port)
@@ -363,7 +369,7 @@ int main(const int argc, const char * const argv[])
       if (!hThread2)
       {
         std::cout << "Unable to create the remote thread. GetLastError() = " << GetLastError() << std::endl;
-        return 0;
+				goto endMainError;
       }
 
       std::cout << "Thread created (2)" << std::endl;
@@ -388,12 +394,12 @@ int main(const int argc, const char * const argv[])
     if (!pReservedSpace)
     {
       std::cout << "Could not allocate virtual memory. (7) GetLastError() = " << GetLastError() << std::endl;
-      return 0;
+			goto endMainError;
     }
     if (!WriteProcessMemory(processInformation.hProcess, pReservedSpaceArgs, args.c_str(), args.length(), NULL))
     {
       std::cout << "Error while calling WriteProcessMemory(). GetLastError() = " << GetLastError() << std::endl;
-      return 0;
+			goto endMainError;
     }
 
     // Call SetStartArgs(pArgs)
@@ -402,7 +408,7 @@ int main(const int argc, const char * const argv[])
     if (!hThreadArgs)
     {
       std::cout << "Unable to create the remote thread. GetLastError() = " << GetLastError() << std::endl;
-      return 0;
+			goto endMainError;
     }
     WaitForSingleObject(hThreadArgs, INFINITE);
     VirtualFreeEx(processInformation.hProcess, pReservedSpaceArgs, args.length(), MEM_COMMIT);
@@ -410,6 +416,16 @@ int main(const int argc, const char * const argv[])
   //============================================
 
   std::cout << "Done" << std::endl;
+	goto endMain;
+
+endMainError:
+	// Do not close Terminal window to show output
+	std::cout << "BTS_Wrapper detected error during startup. Take a look on debug information in this terminal window." << std::endl << "Press return key to close window" << std::endl;
+  std::cin.get(); //Console.ReadKey(true);
+	return -1;
+
+endMain:
+
   return 0;
 }
 

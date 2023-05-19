@@ -15,7 +15,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctime>
-#include <iostream>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -1486,12 +1485,12 @@ extern "C" {
         std::string logpath_and_name(logpath);
         logpath_and_name.append(logname);
 
-        // Try creation of logfile in ".\\Logs\\" if input argument is just a filename, no path
+        // Try creation of logfile in ".\\Logs\\" if input argument is just a filename, no relative path
         if (logname[0] != '\\' && logname[0] != '.') {
+          std::cout << "Try creating log at '" << logpath_and_name << "'" << std::endl;
           logfile.open(logpath_and_name);
           if (logfile.is_open()) {
             logactive = true;
-            std::cout << "Log path: " << logpath_and_name << std::endl;
             LOGPRINT("Log path: " << logpath_and_name);
           }
         }
@@ -1500,10 +1499,10 @@ extern "C" {
         if (logactive == false) {
           logpath = ".\\";
           logpath_and_name = logpath; logpath_and_name.append(logname);
+          std::cout << "Try creating log at '" << logpath_and_name << "'" << std::endl;
           logfile.open(logpath_and_name);
           if (logfile.is_open()) {
             logactive = true;
-            std::cout << "Log path: " << logpath_and_name << std::endl;
             LOGPRINT("Log path: " << logpath_and_name);
           }
         }
@@ -1512,13 +1511,16 @@ extern "C" {
         if (logactive == false) {
           if (0 == gen_logfile_path(logname, logpath)) {
             logpath_and_name = logpath; logpath_and_name.append(logname);
+            std::cout << "Try creating log at '" << logpath_and_name << "'" << std::endl;
             logfile.open(logpath_and_name);
             if (logfile.is_open()) {
               logactive = true;
-              std::cout << "Log path: " << logpath << std::endl;
-              LOGPRINT("Log path: " << logpath);
+              LOGPRINT("Log path: " << logpath_and_name);
             }
           }
+        }
+        if (logactive == false) {
+            std::cout << "Log creation failed for '" << logname << "'. Maybe you used an (unsupported) absolute path?'" << std::endl;
         }
         continue;
       }
