@@ -483,8 +483,8 @@ int WINAPI MySendto(
 
   uint32_t msg_type1 = *((uint32_t*)(buf+2)); // Flips byte order to DCBA...
   uint32_t msg_type2 = *((uint32_t*)(buf+6)); // Flips byte order to DCBA...
-  LOGPRINT("Send msg_type1: " << HEX_RIGHT(8, msg_type1)
-      << " msg_type2: " << HEX_RIGHT(8, msg_type2));
+  //LOGPRINT("Send msg_type1: " << HEX_RIGHT(8, msg_type1)
+  //    << " msg_type2: " << HEX_RIGHT(8, msg_type2));
 
 
 #ifdef WITH_WEBSERVER
@@ -821,8 +821,8 @@ int WINAPI MyRecvfrom(
 
   const uint32_t msg_type1 = *((uint32_t*)(buf+2)); // Flips byte order to DCBA...
   const uint32_t msg_type2 = *((uint32_t*)(buf+6)); // Flips byte order to DCBA...
-  LOGPRINT("Recv msg_type1: " << HEX_RIGHT(8, msg_type1)
-      << " msg_type2: " << HEX_RIGHT(8, msg_type2));
+  //LOGPRINT("Recv msg_type1: " << HEX_RIGHT(8, msg_type1)
+  //    << " msg_type2: " << HEX_RIGHT(8, msg_type2));
 
 #ifdef WITH_WEBSERVER
   // buf =  FE FE  00 00 3E 00  ?? 08 00 00 [...]

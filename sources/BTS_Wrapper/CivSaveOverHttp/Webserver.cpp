@@ -131,7 +131,8 @@ ahc_echo(void *cls,
   *ptr = NULL;                  /* reset when done */
 
   // Requisted url
-  fprintf(stdout, "File: %s\n", url);
+  //fprintf(stdout, "File: %s\n", url);
+  LOGPRINT("(Webserver) Requested file: " << url);
 
   // Check if save filename
   bool file_extension_allowed(false);
@@ -150,15 +151,24 @@ ahc_echo(void *cls,
     }
   }
 
+  std::string path("");
+
   if (file_extension_allowed) {
 
-    //file = fopen (&url[1], "rb");
-
-    std::string path(Root_folder);
+    path.append(Root_folder);
     path.append(&url[1]);
+#if 0
+    file = fopen (path.c_str(), "rb");
+    if (NULL == file){
+      LOGPRINT("(Webserver) fopen failed for '" << path << "'.");
+    }else
+#else
     errno_t err = fopen_s(&file, path.c_str(), "rb");
-
-    if (err != 0 && NULL != file)
+    if (err != 0 || NULL == file)
+    {
+      LOGPRINT("(Webserver) fopen_s failed for '" << path << "'. Error: " << err);
+    }else
+#endif
     {
       fd = _fileno(file);
       if (-1 == fd)
@@ -185,11 +195,12 @@ ahc_echo(void *cls,
     for (std::vector<std::string>::const_iterator i = Allowed_subfolders.begin();
         i != Allowed_subfolders.end(); ++i) {
 
-      fprintf(stdout, "Compare '%s' '%s'...\n", (*i).c_str(), str_url.c_str());
+      //fprintf(stdout, "Compare '%s' '%s'...\n", (*i).c_str(), str_url.c_str());
       if ((*i).compare(str_url) == 0) {
         std::string path(Root_folder);
         path.append(*i);
-        fprintf(stdout, "Opening '%s'...\n", path.c_str());
+        //fprintf(stdout, "Opening '%s'...\n", path.c_str());
+        LOGPRINT("(Webserver) Opening '" << path << "'...");
         foo.dir = opendir(path.c_str());
         foo.p_path = std::addressof(*i);
         break;
@@ -250,6 +261,7 @@ ahc_echo(void *cls,
   else
   {
     // Serve file...
+    LOGPRINT("(Webserver) Serve '" << path << "'");
     response = MHD_create_response_from_callback(buf.st_size, 32 * 1024,     /* 32k page size */
         &file_reader,
         file,
